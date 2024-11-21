@@ -357,13 +357,8 @@ def close_popup(driver):
     try:
         close_button = driver.find_element(By.CSS_SELECTOR, '.btn22>a')
         close_button.click()
-        print("Popup closed")
         return True
-
-    except NoSuchElementException:
-        return False
     except Exception as e:
-        print(f"Error {e}")
         return False
 
 
@@ -385,7 +380,6 @@ def crawl_law_detail(url_link, file_idx):
 
         popup_text = {}
         total_links = len(driver.find_elements(By.CSS_SELECTOR, 'a.link[title="팝업으로 이동"]'))
-        print("total_links:", total_links)
 
         body_html = driver.execute_script("return document.body.innerHTML;")
         soup = BeautifulSoup(body_html, 'html.parser')
@@ -559,14 +553,10 @@ if __name__ == '__main__':
     
     # check if law_detail.json exists
     for idx, row in tqdm(law_list_df.iterrows(), total=law_list_df.shape[0]):
-        if idx < 2207: # 3
-            continue
         url_link = args.base + row['법령상세링크']
         os.makedirs(os.path.join(args.data_dir, 'law_detail'), exist_ok=True)
         processed_law = crawl_law_detail(url_link, row['법령ID'])
         processed_law_process = postprocess_law_data(processed_law)
         # save json
         with open(os.path.join(args.data_dir, 'law_detail', f'law_detail_{row["법령ID"]}.json'), 'w', encoding='utf-8') as f:
-            json.dump(processed_law, f, ensure_ascii=False, indent=4)
-
-        break
+            json.dump(processed_law_process, f, ensure_ascii=False, indent=4)
