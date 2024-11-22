@@ -1,0 +1,11 @@
+# python
+__pycache__
+
+# modeling
+# rag 내 폴더
+data/rag
+models
+
+# etc
+*.out
+tmp
