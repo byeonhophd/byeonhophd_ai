@@ -10,7 +10,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
 from tqdm import tqdm, trange
 from urllib.request import urlopen
 import xml.etree.ElementTree as ET
@@ -379,8 +378,6 @@ def crawl_law_detail(url_link, file_idx):
         html = driver.page_source
 
         popup_text = {}
-        total_links = len(driver.find_elements(By.CSS_SELECTOR, 'a.link[title="팝업으로 이동"]'))
-
         body_html = driver.execute_script("return document.body.innerHTML;")
         soup = BeautifulSoup(body_html, 'html.parser')
 
@@ -553,6 +550,8 @@ if __name__ == '__main__':
     
     # check if law_detail.json exists
     for idx, row in tqdm(law_list_df.iterrows(), total=law_list_df.shape[0]):
+        if idx < 102:
+            continue
         url_link = args.base + row['법령상세링크']
         os.makedirs(os.path.join(args.data_dir, 'law_detail'), exist_ok=True)
         processed_law = crawl_law_detail(url_link, row['법령ID'])
@@ -560,3 +559,4 @@ if __name__ == '__main__':
         # save json
         with open(os.path.join(args.data_dir, 'law_detail', f'law_detail_{row["법령ID"]}.json'), 'w', encoding='utf-8') as f:
             json.dump(processed_law_process, f, ensure_ascii=False, indent=4)
+        break
