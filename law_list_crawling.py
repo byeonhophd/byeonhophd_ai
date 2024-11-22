@@ -75,6 +75,11 @@ def parse_article_content(html_content, popup_text):
     for title_label in pty1_p4_tags:
         for sfon in title_label.find_all('span', class_='sfon'):
             sfon.extract()
+        
+        # 'a' 태그를 "[참조: 텍스트]" 형식으로 대체
+        for a_tag in title_label.find_all('a'):
+            replacement_text = f"[참조: {a_tag.get_text(strip=True)}]"
+            a_tag.string = replacement_text
 
         bl_span = title_label.find('span', class_='bl')
         if bl_span:
@@ -275,14 +280,8 @@ def process_content(element, popup_text):
             text = str(child).strip()
             if text:
                 content_str += text
-        elif child.name == 'a' and 'data-popup-id' in child.attrs:
-            popup_id = child['data-popup-id']
-            if popup_id in popup_text:
-                ref_html = popup_text[popup_id]
-                ref_article = parse_article_content(ref_html, popup_text)
-                content_str += f' [참조: {ref_article.get("article_full_name", child.text)}] '
-            else:
-                content_str += ' ' + child.get_text(strip=True)
+        elif child.name == 'a' and not 'data-popup-id' in child.attrs:
+            content_str += ' ' + child.get_text(strip=True)
         else:
             child_content = process_content(child, popup_text)
             if child_content:
@@ -522,6 +521,11 @@ def postprocess_law_data(data):
                 for item in value:
                     if isinstance(item, dict):
                         postprocess_law_data(item)
+        
+        # 모든 value를 순회하며 str인 경우 앞뒤 공백 제거
+        for key, value in data.items():
+            if isinstance(value, str):
+                data[key] = value.strip()
 
     return data
 
