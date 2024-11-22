@@ -554,13 +554,23 @@ if __name__ == '__main__':
     
     # check if law_detail.json exists
     for idx, row in tqdm(law_list_df.iterrows(), total=law_list_df.shape[0]):
-        if idx < 102:
-            continue
-        url_link = args.base + row['법령상세링크']
-        os.makedirs(os.path.join(args.data_dir, 'law_detail'), exist_ok=True)
-        processed_law = crawl_law_detail(url_link, row['법령ID'])
-        processed_law_process = postprocess_law_data(processed_law)
-        # save json
-        with open(os.path.join(args.data_dir, 'law_detail', f'law_detail_{row["법령ID"]}.json'), 'w', encoding='utf-8') as f:
-            json.dump(processed_law_process, f, ensure_ascii=False, indent=4)
-        break
+        # if exception occurs, retry
+        max_retries = 5
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                url_link = args.base + row['법령상세링크']
+                os.makedirs(os.path.join(args.data_dir, 'law_detail'), exist_ok=True)
+                processed_law = crawl_law_detail(url_link, row['법령ID'])
+                processed_law_process = postprocess_law_data(processed_law)
+                # save json
+                with open(os.path.join(args.data_dir, 'law_detail', f'law_detail_{row["법령ID"]}.json'), 'w', encoding='utf-8') as f:
+                    json.dump(processed_law_process, f, ensure_ascii=False, indent=4)
+                break
+            except Exception as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    print(f"Failed after {max_retries} retries: {e}")
+                    break
+                time.sleep(5)
+
