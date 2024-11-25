@@ -1,0 +1,19 @@
+# something that should be installed with internal dependencies
+# pip3 install -i https://pypi.rbln.ai/simple rebel-compiler optimum-rbln vllm-rbln
+
+llama-index
+llama-index-vector-stores-faiss
+llama-index-readers-faiss
+llama-index-embeddings-huggingface
+llama-index-llms-vllm
+llama-index-llms-openai-like
+llama-index-callbacks-langfuse
+
+tqdm
+absl-py
+bottle
+langfuse
+wheel
+feedparser
+faiss-cpu
+flask
