@@ -561,6 +561,8 @@ if __name__ == '__main__':
             try:
                 url_link = args.base + row['법령상세링크']
                 os.makedirs(os.path.join(args.data_dir, 'law_detail'), exist_ok=True)
+                if os.path.exists(os.path.join(args.data_dir, 'law_detail', f'law_detail_{row["법령ID"]}.json')):
+                    break
                 processed_law = crawl_law_detail(url_link, row['법령ID'])
                 processed_law_process = postprocess_law_data(processed_law)
                 # save json
