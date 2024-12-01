@@ -4,6 +4,7 @@ __pycache__
 # modeling
 # rag 내 폴더
 data/rag
+data/jomun*
 models
 
 # etc
