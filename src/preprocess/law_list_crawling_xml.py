@@ -122,7 +122,12 @@ def crawl_law_detail(url_link, info, args):
     """
     Crawls the law detail page and returns a dictionary of law information.
     """
-    response = urlopen(url_link).read()
+    # law_details_raw 경로에 이미 있는지 확인
+    if os.path.exists(os.path.join(args.data_dir, 'law_details_raw', f'law_text_{info["법령ID"]}.xml')):
+        with open(os.path.join(args.data_dir, 'law_details_raw', f'law_text_{info["법령ID"]}.xml'), 'rb') as f:
+            response = f.read()
+    else:
+        response = urlopen(url_link).read()
     xtree = ET.fromstring(response)
 
     os.makedirs(os.path.join(args.data_dir, 'law_details_raw'), exist_ok=True)
@@ -193,6 +198,18 @@ def crawl_law_detail(url_link, info, args):
                     "호내용": clean_jomun_content(ho_content_raw).strip(ho.find("호번호").text+" " if ho.find("호번호") is not None else " ")
                         if clean_jomun_content(ho_content_raw) else None
                 }
+
+                # 목 처리
+                ho_data['목'] = []
+                for mok in ho.findall("목"):
+                    mok_content_raw = mok.find("목내용").text if mok.find("목내용") is not None else None
+                    mok_data = {
+                        "목번호": mok.find("목번호").text.rstrip(".") if mok.find("목번호") is not None else None,
+                        "목내용": clean_jomun_content(mok_content_raw).strip(mok.find("목번호").text+" " if mok.find("목번호") is not None else " ")
+                            if clean_jomun_content(mok_content_raw) else None
+                    }
+                    ho_data['목'].append(mok_data)
+
                 hang_data['호'].append(ho_data)
 
             jomun_data['항'].append(hang_data)
@@ -260,7 +277,7 @@ if __name__ == '__main__':
         retry_count = 0
         while retry_count < max_retries:
             try:
-                xml_url = f"{args.base}{row['법령상세링크'].replace("HTML", "XML")}"
+                xml_url = f"{args.base}{row['법령상세링크'].replace('HTML', 'XML')}"
                 processed_law_detail = crawl_law_detail(xml_url, row, args)
                 # save law_detail
                 os.makedirs(os.path.join(args.data_dir, 'law_details'), exist_ok=True)
