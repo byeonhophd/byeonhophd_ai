@@ -11,4 +11,4 @@ nohup python -m vllm.entrypoints.openai.api_server \
              &
 
 
-python main.py
+python src/main.py

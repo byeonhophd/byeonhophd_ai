@@ -3,14 +3,13 @@ import logging
 import os
 import sys
 import traceback
+import threading
+import uuid
 
 from flask import Flask, request, jsonify, Response, stream_with_context
-from llama_index.core import load_index_from_storage, get_response_synthesizer, StorageContext, Settings
+from llama_index.core import load_index_from_storage, StorageContext, Settings
 from llama_index.vector_stores.faiss import FaissVectorStore
 from llama_index.llms.openai_like import OpenAILike
-from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.postprocessor import SimilarityPostprocessor
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from src.utils import RBLNBGEM3Embeddings
@@ -71,21 +70,9 @@ def create_app(config):
     )
     index = load_index_from_storage(storage_context=storage_context)
 
-    # Set up retriever
-    retriever = VectorIndexRetriever(index=index, similarity_top_k=2)
-
-    # Set up response synthesizer
-    response_synthesizer = get_response_synthesizer(
-        streaming=True,
-        use_async=True
-    )
-
-    # Set up query engine
-    query_engine = RetrieverQueryEngine(
-        retriever=retriever,
-        response_synthesizer=response_synthesizer,
-        node_postprocessors=[SimilarityPostprocessor(similarity_cutoff=0.7)]
-    )
+    # Global dictionary to maintain chat engines per conversation_id
+    chat_engine_dict = {}
+    chat_engine_lock = threading.Lock()
 
     @flask_app.route('/query', methods=['POST'])
     def query():
@@ -95,15 +82,36 @@ def create_app(config):
             return jsonify({'error': 'No question provided'}), 400
 
         question = data.get('question')
-        flask_app.logger.info(f"Received question: {question}")
+        conversation_id = data.get('conversation_id')
+
+        if not conversation_id:
+            # Generate a new conversation_id
+            conversation_id = str(uuid.uuid4())
+
+        flask_app.logger.info(f"Received question: {question} for conversation_id: {conversation_id}")
+
         try:
-            nodes = retriever.retrieve(question)
+            with chat_engine_lock:
+                # Check if chat_engine exists for this conversation_id
+                if conversation_id in chat_engine_dict:
+                    chat_engine = chat_engine_dict[conversation_id]
+                else:
+                    # Create a new chat_engine and store it
+                    chat_engine = index.as_chat_engine(
+                        chat_mode="condense_plus_context",
+                        context_prompt=(
+                            "당신은 법률 관련 전문 지식을 보유한 대한민국의 법률 전문가이다."
+                            "사용자가 제공한 질문을 바탕으로 핵심만 정확하게 답변하시오."
+                            "\n참고 문서:\n{context_str}"
+                            "참고 문서는 관련 없는 정보일 수 있다. 사용자의 질문에 벗어나는 법률이나 참고 문서는 반드시 제외하시오."
+                        ),
+                        streaming=True,
+                        use_async=True,
+                    )
+                    chat_engine_dict[conversation_id] = chat_engine
 
             # Generate streaming response
-            streaming_response = query_engine.synthesize(
-                question,
-                nodes=nodes
-            )
+            streaming_response = chat_engine.stream_chat(question)
 
             def generate():
                 for text in streaming_response.response_gen:
