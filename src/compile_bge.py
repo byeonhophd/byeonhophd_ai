@@ -11,8 +11,8 @@ def parse_arguments():
     parser.add_argument(
         "--model_id",
         type=str,
-        choices=["BAAI/bge-m3"],
-        default="BAAI/bge-m3",
+        choices=["BAAI/bge-m3", "dragonkue/BGE-m3-ko"],
+        default="dragonkue/BGE-m3-ko",
         help="(str) Model identifier.",
     )
     parser.add_argument(
