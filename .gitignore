@@ -5,6 +5,7 @@ __pycache__
 # rag 내 폴더
 data/rag
 data/jomun*
+data/case*
 models
 
 # etc

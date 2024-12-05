@@ -125,11 +125,14 @@ def crawl_case_detail(url_link, info, args):
         if field in panre_data:
             panre_data[field] = split_numbered_items(panre_data[field])
             # 배열 후처리
-            panre_data[field] = [item.replace('<br/>', '\n').replace('<br>', '\n').replace('<br />', '\n').replace("\n", "").strip(" \n/")
+            panre_data[field] = [item.replace('<br/>', '\n').replace('<br>', '\n').replace('<br />', '\n').replace("\n", "").replace("  ", " ").strip(" \n/")
                                     for item in panre_data[field] if item is not None]
     for field in ['판례내용']:
         # 먼저 <br/> 태그를 줄바꿈 문자로 대체
-        text = panre_data[field].replace('<br/>', '\n').replace('<br>', '\n').replace('<br />', '\n')
+        if panre_data.get(field):
+            text = panre_data[field].replace('<br/>', '\n').replace('<br>', '\n').replace('<br />', '\n')
+        else:
+            text = ""
 
         # 정규 표현식을 사용하여 【키】와 그에 해당하는 값을 추출
         pattern = re.compile(r'【(.*?)】\s*(.*?)(?=【|$)', re.DOTALL)
@@ -144,6 +147,33 @@ def crawl_case_detail(url_link, info, args):
         panre_data[field] = case_data
     
     return panre_data
+
+
+def postprocess_crawl_case_detail(json_file):
+    판시사항 = json_file.get("판시사항", [])
+    판결요지 = json_file.get("판결요지", [])
+    참조조문 = json_file.get("참조조문", [])
+    참조판례 = json_file.get("참조판례", [])
+
+    max_len = max(len(판시사항), len(판결요지), len(참조조문), len(참조판례))
+    judge = {}
+    for i in range(max_len):
+        judge[i + 1] = ""
+        if i < len(판시사항):
+            judge[i + 1] += f"[판시사항] {판시사항[i]}\n"
+        if i < len(판결요지):
+            judge[i + 1] += f"[판결요지] {판결요지[i]}\n"
+        if i < len(참조조문):
+            judge[i + 1] += f"[참조조문] {참조조문[i]}\n"
+        if i < len(참조판례):
+            judge[i + 1] += f"[참조판례] {참조판례[i]}\n"
+
+    ret = {
+        "title": f"{json_file["사건명"]} ({json_file["사건번호"]}) {json_file["법원명"]} {json_file["사건종류명"]} {json_file["선고"]}",
+        "content": f"{[f"[{key}] {value}\n" for key, value in judge.items()]}"
+                   f"{[f"[{key}] {value}\n" for key, value in json_file["판례내용"].items()]}",
+    }
+    return ret
 
 
 if __name__ == '__main__':
@@ -180,6 +210,10 @@ if __name__ == '__main__':
                 os.makedirs(os.path.join(args.data_dir, 'case_details'), exist_ok=True)
                 with open(os.path.join(args.data_dir, 'case_details', f'case_detail_{row["판례일련번호"]}.json'), 'w') as f:
                     json.dump(processed_case_detail, f, ensure_ascii=False, indent=4)
+                postprocess = postprocess_crawl_case_detail(processed_case_detail)
+                os.makedirs(os.path.join(args.data_dir, 'case_details_postprocessed'), exist_ok=True)
+                with open(os.path.join(args.data_dir, 'case_details_postprocessed', f'case_detail_{row["판례일련번호"]}.json'), 'w') as f:
+                    json.dump(postprocess, f, ensure_ascii=False, indent=4)
                 break
             except Exception as e:
                 retry_count += 1
